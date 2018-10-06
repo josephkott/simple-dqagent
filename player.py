@@ -73,15 +73,17 @@ class Player:
                     self.game.show()
                     time.sleep(0.1)
 
-                state = self.game.encode()
+                state = numpy.array(self.game.encode())
                 if random.uniform(0, 1) < self.epsilon:
                     action = random.choice(POSSIBLE_ACTIONS)
                 else:
                     index = numpy.argmax(self.model.predict(state)[0])
                     action = POSSIBLE_ACTIONS[index]
                 
-                # TODO: act and remember
-                
+                reward = self.game.act(action)
+                next_state = numpy.array(self.game.encode())
+
+                self.experience_replay.remember(state, action, reward, next_state)
                 self.train_model_on_batch()
 
         print("Training finished!\n")
@@ -96,7 +98,7 @@ class Player:
                     self.game.show()
                     time.sleep(0.1)
 
-                state = self.game.encode()
+                state = numpy.array(self.game.encode())
                 
                 # TODO: predict with NN
                 action = None
