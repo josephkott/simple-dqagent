@@ -29,13 +29,13 @@ class Player:
         self.epsilon = 0.1
         
         # Number of epochs (fully played games) to study an agent
-        self.epochs = 50000
+        self.epochs = 5000
 
         # Game to play
         self.game = Game()
 
         # Number of hidden layer nodes
-        self.hidden_layer_nodes = 24
+        self.hidden_layer_nodes = 10
 
         # Create keras model
         # TODO: depict structure here
@@ -43,10 +43,11 @@ class Player:
         self.model.add(Dense(self.hidden_layer_nodes, input_dim=self.game.state_size, activation='relu'))
         self.model.add(Dense(self.hidden_layer_nodes, activation='relu'))
         self.model.add(Dense(len(POSSIBLE_ACTIONS), activation='linear'))
+        self.model.compile('Adam', loss='mse')
 
         # Initialize experience replay
         self.experience_replay = ExperienceReplay(size=100)
-        self.batch_size = 10
+        self.batch_size = 1
     
     def train_model_on_batch(self):
         batch = self.experience_replay.get_batch(self.batch_size)
@@ -55,16 +56,18 @@ class Player:
             if self.game.is_over():
                 target = reward
             else:
-                target = reward + self.gamma * numpy.argmax(self.model.predict(next_state)[0])
+                target = reward + self.gamma * numpy.amax(self.model.predict(next_state)[0])
 
             target_f = self.model.predict(state)[0]
-            target_f[action] = target
+            target_f[ACTION_TO_INDEX[action]] = target
+            target_f = target_f[numpy.newaxis]
 
             # TODO: it should be optimized ...
             self.model.fit(state, target_f, epochs=1, verbose=0)
 
     def train(self, interactive=False):
         for _ in range(self.epochs):
+            print(_)
             self.game.create_agent()
 
             while not self.game.is_over():
@@ -73,7 +76,7 @@ class Player:
                     self.game.show()
                     time.sleep(0.1)
 
-                state = numpy.array(self.game.encode())
+                state = numpy.array(self.game.encode())[numpy.newaxis]
                 if random.uniform(0, 1) < self.epsilon:
                     action = random.choice(POSSIBLE_ACTIONS)
                 else:
@@ -81,7 +84,10 @@ class Player:
                     action = POSSIBLE_ACTIONS[index]
                 
                 reward = self.game.act(action)
-                next_state = numpy.array(self.game.encode())
+                next_state = numpy.array(self.game.encode())[numpy.newaxis]
+
+                # DEBUG
+                #print(state, action, reward, next_state)
 
                 self.experience_replay.remember(state, action, reward, next_state)
                 self.train_model_on_batch()
@@ -98,11 +104,9 @@ class Player:
                     self.game.show()
                     time.sleep(0.1)
 
-                state = numpy.array(self.game.encode())
-                
-                # TODO: predict with NN
-                action = None
-
+                state = numpy.array(self.game.encode())[numpy.newaxis]
+                index = numpy.argmax(self.model.predict(state)[0])
+                action = POSSIBLE_ACTIONS[index]
                 self.game.act(action)
 
 
@@ -111,3 +115,4 @@ if __name__ == '__main__':
     player = Player()
     player.train(interactive=False)
     player.play(interactive=True)
+    #player.play(interactive=True)
