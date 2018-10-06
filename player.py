@@ -10,6 +10,7 @@ from keras.layers import Dense
 
 from game import Game
 from actions import POSSIBLE_ACTIONS, ACTION_TO_INDEX
+from experience_replay import ExperienceReplay
 
 
 class Player:
@@ -41,6 +42,9 @@ class Player:
         self.model.add(Dense(self.hidden_layer_nodes, input_dim=self.game.state_size, activation='relu'))
         self.model.add(Dense(self.hidden_layer_nodes, activation='relu'))
         self.model.add(Dense(len(POSSIBLE_ACTIONS), activation='linear'))
+
+        # Initialize experience replay
+        self.experience_replay = ExperienceReplay(size=100)
     
     def train(self, interactive=False):
         for _ in range(self.epochs):
