@@ -13,4 +13,6 @@ class ExperienceReplay:
             del self.memory[0]
     
     def get_batch(self, batch_size):
+        if len(self.memory) < batch_size:
+            return self.memory
         return random.sample(self.memory, batch_size)

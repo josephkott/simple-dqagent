@@ -24,7 +24,8 @@ class Player:
         # gamma is a parameter of Q - learing algorithm
         self.gamma = 0.9
 
-        # We use epsilon - greedy strategy of learning 
+        # We use epsilon - greedy strategy of learning
+        # TODO: use epsilon decay strategy as well
         self.epsilon = 0.1
         
         # Number of epochs (fully played games) to study an agent
@@ -45,7 +46,23 @@ class Player:
 
         # Initialize experience replay
         self.experience_replay = ExperienceReplay(size=100)
+        self.batch_size = 10
     
+    def train_model_on_batch(self):
+        batch = self.experience_replay.get_batch(self.batch_size)
+
+        for state, action, reward, next_state in batch:
+            if self.game.is_over():
+                target = reward
+            else:
+                target = reward + self.gamma * numpy.argmax(self.model.predict(next_state)[0])
+
+            target_f = self.model.predict(state)[0]
+            target_f[action] = target
+
+            # TODO: it should be optimized ...
+            self.model.fit(state, target_f, epochs=1, verbose=0)
+
     def train(self, interactive=False):
         for _ in range(self.epochs):
             self.game.create_agent()
@@ -60,13 +77,12 @@ class Player:
                 if random.uniform(0, 1) < self.epsilon:
                     action = random.choice(POSSIBLE_ACTIONS)
                 else:
-                    # TODO: predict with NN
-                    pass
-
-                reward = self.game.act(action)
-                next_state = self.game.encode() # ?
+                    index = numpy.argmax(self.model.predict(state)[0])
+                    action = POSSIBLE_ACTIONS[index]
                 
-                # TODO: fitting
+                # TODO: act and remember
+                
+                self.train_model_on_batch()
 
         print("Training finished!\n")
     
