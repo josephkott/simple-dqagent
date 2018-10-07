@@ -36,7 +36,19 @@ class Player:
         self.hidden_layer_nodes = 20
 
         # Create keras model
-        # TODO: depict structure here
+        # _________________________________________________________________
+        # Layer (type)                 Output Shape              Param #   
+        # =================================================================
+        # dense_1 (Dense)              (None, 20)                120       
+        # _________________________________________________________________
+        # dense_2 (Dense)              (None, 20)                420       
+        # _________________________________________________________________
+        # dense_3 (Dense)              (None, 5)                 105       
+        # =================================================================
+        # Total params: 645
+        # Trainable params: 645
+        # Non-trainable params: 0
+        # _________________________________________________________________
         self.model = Sequential()
         self.model.add(Dense(self.hidden_layer_nodes, input_dim=self.game.state_size, activation='relu'))
         self.model.add(Dense(self.hidden_layer_nodes, activation='relu'))
