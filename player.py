@@ -18,9 +18,6 @@ class Player:
     This class represents a player, his strategy of learning and playing the game.
     """
     def __init__(self):
-        # Learning rate 
-        self.alpha = 0.1
-
         # gamma is a parameter of Q - learing algorithm
         self.gamma = 0.9
 
@@ -30,13 +27,13 @@ class Player:
         self.epsilon_min = 0.01
         
         # Number of epochs (fully played games) to study an agent
-        self.epochs = 2000
+        self.epochs = 1000
 
         # Game to play
         self.game = Game()
 
         # Number of hidden layer nodes
-        self.hidden_layer_nodes = 20
+        self.hidden_layer_nodes = 24
 
         # Create keras model
         # TODO: depict structure here
@@ -47,45 +44,44 @@ class Player:
         self.model.compile('Adam', loss='mse')
 
         # Initialize experience replay
-        self.experience_replay = ExperienceReplay(size=100)
-        self.batch_size = 10
+        self.experience_replay = ExperienceReplay(size=2000)
+        self.batch_size = 50
     
     def train_model_on_batch(self):
         batch = self.experience_replay.get_batch(self.batch_size)
 
         states = []
         target_fs = []
-
-        # TODO: optimize it
+        actions = []
+        rewards = []
+        next_states = []
+        not_is_overs = []
 
         for state, action, reward, next_state, is_over in batch:
-            if is_over:
-                target = reward
-            else:
-                target = reward + self.gamma * numpy.amax(self.model.predict(next_state[numpy.newaxis])[0])
-
-            target_f = self.model.predict(state[numpy.newaxis])[0]
-            target_f[ACTION_TO_INDEX[action]] = target
-
             states.append(state)
-            target_fs.append(target_f)
+            actions.append(action)
+            rewards.append(reward)
+            next_states.append(next_state)
+            not_is_overs.append(not is_over)
 
+        states = numpy.array(states)
+        next_states = numpy.array(next_states)
+        not_is_overs = numpy.array(not_is_overs)
+        rewards = numpy.array(rewards)
 
-        # TODO: remove [newaxis], that's weird
+        targets = rewards + not_is_overs * self.gamma * numpy.amax(self.model.predict(next_states), axis=1)
+        target_fs = self.model.predict(states)
 
-        self.model.fit(
-            numpy.array(states),
-            numpy.array(target_fs),
-            verbose=0
-        )
+        for i in range(len(batch)):
+            target_fs[i, ACTION_TO_INDEX[actions[i]]] = targets[i]
+        self.model.fit(states, target_fs, verbose=0)
 
     def train(self, interactive=False):
         for _ in range(self.epochs):
-            print(_)
             self.game.create_agent()
 
             turns = 0
-            while turns < 100:
+            while turns < 500:
                 turns += 1
 
                 if interactive:
@@ -105,7 +101,7 @@ class Player:
 
                 is_over = self.game.is_over()
                 if is_over:
-                    reward += turns / 20.0
+                    reward += turns / 10.0
                     self.experience_replay.remember(state, action, reward, next_state, is_over)
                     break
 
@@ -115,6 +111,8 @@ class Player:
             # Epsilon decay technic
             if self.epsilon > self.epsilon_min:
                 self.epsilon *= self.epsilon_decay
+            
+            print(_, turns)
 
         print("Training finished!\n")
     
