@@ -27,13 +27,13 @@ class Player:
         self.epsilon_min = 0.01
         
         # Number of epochs (fully played games) to study an agent
-        self.epochs = 1000
+        self.epochs = 500
 
         # Game to play
         self.game = Game()
 
         # Number of hidden layer nodes
-        self.hidden_layer_nodes = 24
+        self.hidden_layer_nodes = 20
 
         # Create keras model
         # TODO: depict structure here
@@ -45,11 +45,14 @@ class Player:
 
         # Initialize experience replay
         self.experience_replay = ExperienceReplay(size=2000)
-        self.batch_size = 50
+        self.batch_size = 20
+        self.max_turns = 100
     
     def train_model_on_batch(self):
         batch = self.experience_replay.get_batch(self.batch_size)
 
+        # ---------------------------------- #
+        # TODO: move this logic to get_batch
         states = []
         target_fs = []
         actions = []
@@ -68,6 +71,7 @@ class Player:
         next_states = numpy.array(next_states)
         not_is_overs = numpy.array(not_is_overs)
         rewards = numpy.array(rewards)
+        # ---------------------------------- #
 
         targets = rewards + not_is_overs * self.gamma * numpy.amax(self.model.predict(next_states), axis=1)
         target_fs = self.model.predict(states)
@@ -77,11 +81,11 @@ class Player:
         self.model.fit(states, target_fs, verbose=0)
 
     def train(self, interactive=False):
-        for _ in range(self.epochs):
+        for epoch in range(self.epochs):
             self.game.create_agent()
 
             turns = 0
-            while turns < 500:
+            while turns < self.max_turns:
                 turns += 1
 
                 if interactive:
@@ -101,9 +105,12 @@ class Player:
 
                 is_over = self.game.is_over()
                 if is_over:
-                    reward += turns / 10.0
+                    reward -= 10
                     self.experience_replay.remember(state, action, reward, next_state, is_over)
                     break
+
+                if turns == self.max_turns:
+                    reward += 10
 
                 self.experience_replay.remember(state, action, reward, next_state, is_over)
                 self.train_model_on_batch()
@@ -112,7 +119,7 @@ class Player:
             if self.epsilon > self.epsilon_min:
                 self.epsilon *= self.epsilon_decay
             
-            print(_, turns)
+            print('Epoch: %i Total turns: %i' % (epoch, turns))
 
         print("Training finished!\n")
     
