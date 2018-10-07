@@ -7,8 +7,8 @@ class ExperienceReplay:
         self.size = size
         self.memory = []
     
-    def remember(self, state, action, reward, next_state):
-        self.memory.append((state, action, reward, next_state))
+    def remember(self, state, action, reward, next_state, is_over):
+        self.memory.append((state, action, reward, next_state, is_over))
         if len(self.memory) > self.size:
             del self.memory[0]
     

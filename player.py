@@ -25,17 +25,18 @@ class Player:
         self.gamma = 0.9
 
         # We use epsilon - greedy strategy of learning
-        # TODO: use epsilon decay strategy as well
-        self.epsilon = 0.1
+        self.epsilon = 1
+        self.epsilon_decay = 0.99
+        self.epsilon_min = 0.01
         
         # Number of epochs (fully played games) to study an agent
-        self.epochs = 5000
+        self.epochs = 2000
 
         # Game to play
         self.game = Game()
 
         # Number of hidden layer nodes
-        self.hidden_layer_nodes = 10
+        self.hidden_layer_nodes = 20
 
         # Create keras model
         # TODO: depict structure here
@@ -47,50 +48,73 @@ class Player:
 
         # Initialize experience replay
         self.experience_replay = ExperienceReplay(size=100)
-        self.batch_size = 1
+        self.batch_size = 10
     
     def train_model_on_batch(self):
         batch = self.experience_replay.get_batch(self.batch_size)
 
-        for state, action, reward, next_state in batch:
-            if self.game.is_over():
+        states = []
+        target_fs = []
+
+        # TODO: optimize it
+
+        for state, action, reward, next_state, is_over in batch:
+            if is_over:
                 target = reward
             else:
-                target = reward + self.gamma * numpy.amax(self.model.predict(next_state)[0])
+                target = reward + self.gamma * numpy.amax(self.model.predict(next_state[numpy.newaxis])[0])
 
-            target_f = self.model.predict(state)[0]
+            target_f = self.model.predict(state[numpy.newaxis])[0]
             target_f[ACTION_TO_INDEX[action]] = target
-            target_f = target_f[numpy.newaxis]
 
-            # TODO: it should be optimized ...
-            self.model.fit(state, target_f, epochs=1, verbose=0)
+            states.append(state)
+            target_fs.append(target_f)
+
+
+        # TODO: remove [newaxis], that's weird
+
+        self.model.fit(
+            numpy.array(states),
+            numpy.array(target_fs),
+            verbose=0
+        )
 
     def train(self, interactive=False):
         for _ in range(self.epochs):
             print(_)
             self.game.create_agent()
 
-            while not self.game.is_over():
+            turns = 0
+            while turns < 100:
+                turns += 1
+
                 if interactive:
                     os.system('clear')
                     self.game.show()
                     time.sleep(0.1)
 
-                state = numpy.array(self.game.encode())[numpy.newaxis]
+                state = numpy.array(self.game.encode())
                 if random.uniform(0, 1) < self.epsilon:
                     action = random.choice(POSSIBLE_ACTIONS)
                 else:
-                    index = numpy.argmax(self.model.predict(state)[0])
+                    index = numpy.argmax(self.model.predict(state[numpy.newaxis])[0])
                     action = POSSIBLE_ACTIONS[index]
                 
                 reward = self.game.act(action)
-                next_state = numpy.array(self.game.encode())[numpy.newaxis]
+                next_state = numpy.array(self.game.encode())
 
-                # DEBUG
-                #print(state, action, reward, next_state)
+                is_over = self.game.is_over()
+                if is_over:
+                    reward += turns / 20.0
+                    self.experience_replay.remember(state, action, reward, next_state, is_over)
+                    break
 
-                self.experience_replay.remember(state, action, reward, next_state)
+                self.experience_replay.remember(state, action, reward, next_state, is_over)
                 self.train_model_on_batch()
+            
+            # Epsilon decay technic
+            if self.epsilon > self.epsilon_min:
+                self.epsilon *= self.epsilon_decay
 
         print("Training finished!\n")
     
@@ -115,4 +139,3 @@ if __name__ == '__main__':
     player = Player()
     player.train(interactive=False)
     player.play(interactive=True)
-    #player.play(interactive=True)
